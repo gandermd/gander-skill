@@ -78,7 +78,7 @@ gander -outfile readme.html README.md  # render to file, no browser
 
 ## Share on gander.md
 
-Subcommands appear in `gander --help` only after a successful `signup` (the CLI hides them until an API token is stored in `~/.gander`).
+Subcommands appear in `gander --help` only after a successful `signup` (the CLI hides them until an API token is stored in `~/.gander/config.json`).
 
 ### Sign up (first-time only)
 
@@ -86,7 +86,7 @@ Subcommands appear in `gander --help` only after a successful `signup` (the CLI 
 gander signup --email you@example.com
 ```
 
-Opens the signup form in your browser. Submit it; the CLI polls for the API token and writes it to `~/.gander`.
+Opens the signup form in your browser. Submit it; the CLI polls for the API token and writes it to `~/.gander/config.json`.
 
 ### Share a file
 
@@ -95,7 +95,7 @@ gander share README.md             # upload + open https://gander.md/s/<id>
 gander share --watch README.md     # upload + push live updates to viewers on save
 ```
 
-Records the share mapping in `~/.gander` (path → short ID) so future invocations know it.
+Records the share mapping in `~/.gander/config.json` (path → short ID) so future invocations know it.
 
 ### List shares
 
@@ -128,11 +128,11 @@ Browser handoff to the dashboard: shares, token rotation, account settings.
 gander auth gmd_…   # paste the new token from the dashboard's rotate flow
 ```
 
-The CLI validates the token against `/api/shares` before overwriting `~/.gander`.
+The CLI validates the token against `/api/shares` before overwriting `~/.gander/config.json`.
 
 ## Configuration
 
-Optional JSON config at `~/.gander`:
+`~/.gander` is a directory. JSON config lives at `~/.gander/config.json`:
 
 ```json
 {
@@ -148,15 +148,15 @@ Optional JSON config at `~/.gander`:
 }
 ```
 
-CLI flags always override the config. Pass `--watch=false` (or any explicit value) to override `~/.gander` for one run.
+CLI flags always override the config. Pass `--watch=false` (or any explicit value) to override `~/.gander/config.json` for one run.
 
 ### Profiles (`GANDER_CONFIG`)
 
 Point at a different endpoint (local dev, staging, self-hosted) without disturbing prod `~/.gander`:
 
 ```bash
-GANDER_CONFIG=dev gander signup --email dev@example.com    # reads/writes ~/.gander.dev
-GANDER_CONFIG=staging gander list                          # reads/writes ~/.gander.staging
+GANDER_CONFIG=dev gander signup --email dev@example.com    # writes ~/.gander.dev/config.json
+GANDER_CONFIG=staging gander list                          # reads ~/.gander.staging/config.json
 ```
 
 Profile names must be a single path component (no `/`, `\`, `.`, or `..`). The legacy `~/.mdp` fallback only applies when `GANDER_CONFIG` is unset.
@@ -281,8 +281,8 @@ Source-build installs: `git pull && ./install.sh --source` (or rebuild manually)
 ## Gotchas
 
 - **Flags before the markdown path.** Go's flag parser stops at the first positional arg. `gander README.md --watch` does NOT work.
-- **Share/list/remove/manage are hidden until signup.** They don't appear in `gander --help` until `~/.gander` has an `api_token`.
-- **Token rotation is a two-step dance.** Rotate in the dashboard (`gander manage` → rotate), then on every machine run `gander auth <new_token>`. The CLI validates the new token before overwriting `~/.gander`.
+- **Share/list/remove/manage are hidden until signup.** They don't appear in `gander --help` until `~/.gander/config.json` has an `api_token`.
+- **Token rotation is a two-step dance.** Rotate in the dashboard (`gander manage` → rotate), then on every machine run `gander auth <new_token>`. The CLI validates the new token before overwriting `~/.gander/config.json`.
 - **`--upgrade` needs a release build.** Dev / source builds print an error and point you at the install script.
 - **`~/.mdp` legacy fallback** only applies when `GANDER_CONFIG` is unset. Named profiles (`~/.gander.dev`, etc.) never fall back to `.mdp`.
 - **`-outfile` and `--watch` are mutually exclusive.** Choose one.
@@ -300,7 +300,7 @@ Source-build installs: `git pull && ./install.sh --source` (or rebuild manually)
 
 ## Rules
 
-- **Never** commit `~/.gander` (it contains `api_token`). It must remain gitignored.
+- **Never** commit `~/.gander/` (it contains `api_token`). It must remain gitignored.
 - **Never** auto-gander files detected by the watcher — always prompt first.
 - **Never** invoke `gander share` against a file the user didn't ask to share.
 - **Never** overwrite an existing plan markdown silently — the script disambiguates with `-2`, `-3`, … suffixes for a reason.
