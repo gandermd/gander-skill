@@ -7,8 +7,10 @@ description: |
   markdown", "share this on gander.md", "list my gander shares", "remove a
   share", "open my gander dashboard", "sign up for gander", "watch for new
   markdown files", "watch my notes dir", "save this plan", "save my plan",
-  "save plan as markdown", "upgrade gander", or any request to run a gander
-  subcommand (signup, share, list, remove, manage, auth, --upgrade, --watch).
+  "save plan as markdown", "upgrade gander", "gander comments", "pending
+  gander review", "comments on a watched file", editing a gander-watched
+  markdown file, or any request to run a gander subcommand (signup, share,
+  list, remove, manage, auth, comments, mcp, --upgrade, --watch).
   Also invoke after the agent produces a plan (plan-mode exit, "plan this",
   "design this") to capture it as markdown via scripts/save-plan.sh.
 license: MIT
@@ -34,7 +36,7 @@ Invoke when the user wants to:
 - **Save a plan**: "save this plan", "save my plan as markdown", or after the agent itself produces a plan (in plan mode, after "plan this" / "design this" / "architect this")
 - **Upgrade**: "upgrade gander"
 
-Also invoke when the user references any gander subcommand (`signup`, `share`, `list`, `remove`, `manage`, `auth`, `--upgrade`, `--watch`, `--version`).
+Also invoke when the user references any gander subcommand (`signup`, `share`, `list`, `remove`, `manage`, `auth`, `comments`, `mcp`, `--upgrade`, `--watch`, `--version`), or when editing a markdown file that is already shared with `gander watch`.
 
 ## Install + verify
 
@@ -72,7 +74,7 @@ gander -outfile readme.html README.md  # render to file, no browser
 
 > **Gotcha:** Go's `flag` package stops parsing at the first positional argument. **All flags must come before the markdown path.** `gander README.md --watch` does NOT work — use `gander --watch README.md`.
 
-`--watch` starts a small local HTTP server on a free port for SSE hot-reloads. It runs until you press `Ctrl-C`.
+`--watch` hands the file off to the `gander _serve` runner and returns immediately. The runner live-reloads the local preview on save. Use `--foreground` only for CI/debug (blocks until Ctrl-C).
 
 `-outfile` and `--watch` are mutually exclusive.
 
@@ -92,7 +94,8 @@ Opens the signup form in your browser. Submit it; the CLI polls for the API toke
 
 ```bash
 gander share README.md             # upload + open https://gander.md/s/<id>
-gander share --watch README.md     # upload + push live updates to viewers on save
+gander share --watch README.md     # upload + hand off to the runner (returns immediately)
+gander watch README.md             # alias for share --watch
 ```
 
 Records the share mapping in `~/.gander/config.json` (path → short ID) so future invocations know it.
@@ -104,6 +107,22 @@ gander list
 ```
 
 Table of all active shares on your account.
+
+### Comments (review round-trip)
+
+Comments live on gander.md, not in the markdown file. The agent reads them via MCP (`gander mcp`), installed once with `gander mcp install`. After that, call `gander_list_comments` at the start of a turn. Do not ask the user to paste comments.
+
+```bash
+gander comments              # inbox across all shares on this machine
+gander comments plan.md      # unresolved threads on one file
+gander mcp install           # merge MCP into OpenCode / Claude / Cursor / Codex
+```
+
+If MCP is not connected, `gander comments` is the fallback. Still no paste.
+
+Reviewer comments are pulled at the start of each turn. Keep your session open while waiting on review — the runner will notify you when something new arrives.
+
+If you will edit a file that has comments and it is not currently watched, run `gander watch <path>` first so the reviewer sees live updates.
 
 ### Remove a share
 
