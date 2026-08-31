@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Assert SKILL.md comments copy: untrusted/scope language, 5m loop for
 # Grok/Claude on first gander of a markdown file, every-turn inbox check
-# for other agents.
+# for other agents after the same first-gander trigger.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -29,7 +29,7 @@ contains "Other agents"
 contains "Do not stack duplicate loops"
 contains "first time this session"
 contains "gander a markdown file"
-contains 'At the start of every turn, call `gander_list_comments`'
+contains "every subsequent turn"
 
 if grep -q -F "once per session" "$SKILL"; then
   echo "must not start the comment loop at session start" >&2
@@ -55,6 +55,28 @@ if [ -z "$grok_claude_block" ]; then
 elif printf '%s\n' "$grok_claude_block" | grep -q "every turn"; then
   echo "Grok/Claude polling must not require every-turn inbox checks" >&2
   fail=1
+fi
+
+# Other agents poll every subsequent turn after first gander; no /loop.
+other_agents_block="$(awk '
+  /\*\*Other agents\*\*/ {on=1}
+  /The no-path result/ {on=0}
+  on {print}
+' "$SKILL")"
+if [ -z "$other_agents_block" ]; then
+  echo "missing Other agents polling block" >&2
+  fail=1
+else
+  for want in "first time this session" "gander a markdown file" "every subsequent turn" "gander_list_comments"; do
+    if ! printf '%s\n' "$other_agents_block" | grep -q -F "$want"; then
+      echo "Other agents block missing: $want" >&2
+      fail=1
+    fi
+  done
+  if printf '%s\n' "$other_agents_block" | grep -q "/loop"; then
+    echo "Other agents must not start a /loop" >&2
+    fail=1
+  fi
 fi
 
 if [ "$fail" -ne 0 ]; then
