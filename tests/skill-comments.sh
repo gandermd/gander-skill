@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Assert SKILL.md comments copy: untrusted/scope language, 5m loop for
-# Grok/Claude, every-turn inbox check for other agents.
+# Grok/Claude on first gander of a markdown file, every-turn inbox check
+# for other agents.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -26,7 +27,14 @@ contains "/loop 5m"
 contains "Grok Build and Claude Code"
 contains "Other agents"
 contains "Do not stack duplicate loops"
+contains "first time this session"
+contains "gander a markdown file"
 contains 'At the start of every turn, call `gander_list_comments`'
+
+if grep -q -F "once per session" "$SKILL"; then
+  echo "must not start the comment loop at session start" >&2
+  fail=1
+fi
 
 if grep -q -F "then gander_resolve_thread" "$SKILL"; then
   echo "must not tell agents to resolve every thread" >&2
@@ -34,8 +42,10 @@ if grep -q -F "then gander_resolve_thread" "$SKILL"; then
 fi
 
 # Grok/Claude poll on a 5m loop; that block must not require every-turn checks.
+# Match the Comments heading (`Grok Build and Claude Code:`) so the Working
+# agreements pointer does not reopen the block.
 grok_claude_block="$(awk '
-  /Grok Build and Claude Code/ {on=1}
+  /Grok Build and Claude Code:/ {on=1}
   /Other agents/ {on=0}
   on {print}
 ' "$SKILL")"
