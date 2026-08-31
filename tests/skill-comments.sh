@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Assert SKILL.md comments copy: untrusted/scope language, 5m loop for
 # Grok/Claude on first gander of a markdown file, every-turn inbox check
-# for other agents after the same first-gander trigger.
+# for other agents after the same first-gander trigger, 15-minute idle
+# window that resets when a check discovers new comments.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -30,6 +31,12 @@ contains "Do not stack duplicate loops"
 contains "first time this session"
 contains "gander a markdown file"
 contains "every subsequent turn"
+contains "15 minutes"
+contains "stop time"
+contains "scheduler_delete"
+contains "CronDelete"
+contains "new comments"
+contains "Comment polling lasts 15 minutes"
 
 if grep -q -F "once per session" "$SKILL"; then
   echo "must not start the comment loop at session start" >&2
@@ -38,6 +45,11 @@ fi
 
 if grep -q -F "then gander_resolve_thread" "$SKILL"; then
   echo "must not tell agents to resolve every thread" >&2
+  fail=1
+fi
+
+if grep -q -F "30 minutes" "$SKILL"; then
+  echo "must not keep a 30-minute poll window" >&2
   fail=1
 fi
 
@@ -55,19 +67,27 @@ if [ -z "$grok_claude_block" ]; then
 elif printf '%s\n' "$grok_claude_block" | grep -q "every turn"; then
   echo "Grok/Claude polling must not require every-turn inbox checks" >&2
   fail=1
+else
+  for want in "stop time" "scheduler_delete" "CronDelete" "move the stop time"; do
+    if ! printf '%s\n' "$grok_claude_block" | grep -q -F "$want"; then
+      echo "Grok/Claude block missing: $want" >&2
+      fail=1
+    fi
+  done
 fi
 
 # Other agents poll every subsequent turn after first gander; no /loop.
+# Stop before the shared window sentence so loop-delete copy stays in Grok/Claude.
 other_agents_block="$(awk '
   /\*\*Other agents\*\*/ {on=1}
-  /The no-path result/ {on=0}
+  /^Comment polling lasts/ {on=0}
   on {print}
 ' "$SKILL")"
 if [ -z "$other_agents_block" ]; then
   echo "missing Other agents polling block" >&2
   fail=1
 else
-  for want in "first time this session" "gander a markdown file" "every subsequent turn" "gander_list_comments"; do
+  for want in "first time this session" "gander a markdown file" "every subsequent turn" "gander_list_comments" "15 minutes" "skip the inbox check" "restart the 15-minute window"; do
     if ! printf '%s\n' "$other_agents_block" | grep -q -F "$want"; then
       echo "Other agents block missing: $want" >&2
       fail=1
