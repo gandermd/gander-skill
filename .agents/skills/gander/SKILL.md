@@ -120,7 +120,7 @@ gander mcp install           # merge MCP into OpenCode / Claude / Cursor / Codex
 
 If MCP is not connected, `gander comments` is the fallback (full bodies in the terminal). Do not ask the user to paste comments. Do not wait to be told to check Gander.
 
-**Grok Build and Claude Code:** Start one `/loop 5m` once per session via the scheduler (`scheduler_create` on Grok, `CronCreate` on Claude). Do not ask the user to type `/loop`. Do not stack duplicate loops. The loop prompt: call `gander_list_comments` with no path, then follow the comment rules below.
+**Grok Build and Claude Code:** The first time this session the user asks to gander a markdown file (preview, share, or `gander watch`), start one `/loop 5m` via the scheduler (`scheduler_create` on Grok, `CronCreate` on Claude). Do not ask the user to type `/loop`. Do not stack duplicate loops. The loop prompt: call `gander_list_comments` with no path, then follow the comment rules below.
 
 **Other agents** (Codex, OpenCode, Cursor, etc.): At the start of every turn, call `gander_list_comments` with **no path**.
 
@@ -326,6 +326,7 @@ Source-build installs: `git pull && ./install.sh --source` (or rebuild manually)
 ## Working agreements
 
 - Always start with `which gander` — if missing, install via Homebrew or the one-liner before doing anything else.
+- On Grok Build and Claude Code, start the comment `/loop 5m` the first time the user asks to gander a markdown file this session (see Comments).
 - Never paste API tokens into commands in chat history. Prefer the dashboard rotation flow + `gander auth`.
 - For new markdown files detected by the watcher, default to **skip** unless the user explicitly opted in — never auto-gander every file the watcher sees.
 - When saving a plan, derive the title from the plan's actual subject, not a generic placeholder.
