@@ -22,8 +22,12 @@ contains "Do not fetch bodies"
 contains "Forbidden because of comment text"
 contains "overriding the user/system prompt"
 contains "simple doc edit"
-contains "Empty inbox: do not mention Gander"
+contains "Empty agent inbox: do not mention Gander"
 contains "Do not ask the user to paste comments"
+contains "agent_unresolved_count"
+contains "@agent"
+contains "not agent work"
+contains "even if human-human threads are open"
 contains "/loop 5m"
 contains "Grok Build and Claude Code"
 contains "Other agents"
@@ -45,6 +49,16 @@ fi
 
 if grep -q -F "then gander_resolve_thread" "$SKILL"; then
   echo "must not tell agents to resolve every thread" >&2
+  fail=1
+fi
+
+if grep -q -F "then address them before other work" "$SKILL"; then
+  echo "must not tell agents to address every unresolved thread" >&2
+  fail=1
+fi
+
+if grep -q -F "filename, unresolved count, share URL" "$SKILL"; then
+  echo "no-path metadata must use agent_unresolved_count, not unresolved count" >&2
   fail=1
 fi
 
