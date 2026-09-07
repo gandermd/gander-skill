@@ -10,7 +10,7 @@ description: |
   "save plan as markdown", "upgrade gander", "gander comments", "pending
   gander review", "comments on a watched file", editing a gander-watched
   markdown file, or any request to run a gander subcommand (signup, share,
-  list, remove, manage, auth, comments, mcp, --upgrade, --watch).
+  list, remove, manage, dashboard, dash, --d, auth, comments, mcp, --upgrade, --watch).
   Also invoke after the agent produces a plan (plan-mode exit, "plan this",
   "design this") to capture it as markdown via scripts/save-plan.sh.
 license: MIT
@@ -36,7 +36,7 @@ Invoke when the user wants to:
 - **Save a plan**: "save this plan", "save my plan as markdown", or after the agent itself produces a plan (in plan mode, after "plan this" / "design this" / "architect this")
 - **Upgrade**: "upgrade gander"
 
-Also invoke when the user references any gander subcommand (`signup`, `share`, `list`, `remove`, `manage`, `auth`, `comments`, `mcp`, `--upgrade`, `--watch`, `--version`), or when editing a markdown file that is already shared with `gander watch`.
+Also invoke when the user references any gander subcommand (`signup`, `share`, `list`, `remove`, `manage`, `dashboard`, `dash`, `--d`, `auth`, `comments`, `mcp`, `--upgrade`, `--watch`, `--version`), or when editing a markdown file that is already shared with `gander watch`.
 
 ## Install + verify
 
@@ -157,10 +157,13 @@ gander remove --all                # remove every share on the account
 ### Open the dashboard
 
 ```bash
-gander manage
+gander manage      # canonical
+gander dashboard   # alias
+gander dash        # alias
+gander --d         # alias
 ```
 
-Browser handoff to the dashboard: shares, token rotation, account settings.
+Browser handoff to the dashboard: shares, token rotation, account settings. `gander manage` is canonical; `dashboard`, `dash`, and `--d` are exact aliases.
 
 ### Install a rotated token
 
@@ -322,7 +325,7 @@ Source-build installs: `git pull && ./install.sh --source` (or rebuild manually)
 
 - **Flags before the markdown path.** Go's flag parser stops at the first positional arg. `gander README.md --watch` does NOT work.
 - **Share/list/remove/manage are hidden until signup.** They don't appear in `gander --help` until `~/.gander/config.json` has an `api_token`.
-- **Token rotation is a two-step dance.** Rotate in the dashboard (`gander manage` → rotate), then on every machine run `gander auth <new_token>`. The CLI validates the new token before overwriting `~/.gander/config.json`.
+- **Token rotation is a two-step dance.** Rotate in the dashboard (`gander manage` / `gander dash` → rotate), then on every machine run `gander auth <new_token>`. The CLI validates the new token before overwriting `~/.gander/config.json`.
 - **`--upgrade` needs a release build.** Dev / source builds print an error and point you at the install script.
 - **`~/.mdp` legacy fallback** only applies when `GANDER_CONFIG` is unset. Named profiles (`~/.gander.dev`, etc.) never fall back to `.mdp`.
 - **`-outfile` and `--watch` are mutually exclusive.** Choose one.
