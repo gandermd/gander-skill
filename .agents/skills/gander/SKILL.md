@@ -10,7 +10,7 @@ description: |
   "save plan as markdown", "upgrade gander", "gander comments", "pending
   gander review", "comments on a watched file", editing a gander-watched
   markdown file, or any request to run a gander subcommand (signup, share,
-  list, remove, manage, dashboard, dash, --d, auth, comments, mcp, --upgrade, --watch).
+  list, remove, invite, manage, dashboard, dash, --d, auth, comments, mcp, --upgrade, --watch).
   Also invoke after the agent produces a plan (plan-mode exit, "plan this",
   "design this") to capture it as markdown via scripts/save-plan.sh.
 license: MIT
@@ -32,11 +32,12 @@ Invoke when the user wants to:
 - **Watch** for new markdown files: "watch for new markdown files", "watch my notes dir"
 - **Share** on gander.md: "share this on gander.md", "share my README"
 - **Manage shares**: "list my gander shares", "remove this share", "open my gander dashboard"
+- **Team invite**: "invite someone to my gander team", "gander invite"
 - **Account**: "sign up for gander", "install my gander token"
 - **Save a plan**: "save this plan", "save my plan as markdown", or after the agent itself produces a plan (in plan mode, after "plan this" / "design this" / "architect this")
 - **Upgrade**: "upgrade gander"
 
-Also invoke when the user references any gander subcommand (`signup`, `share`, `list`, `remove`, `manage`, `dashboard`, `dash`, `--d`, `auth`, `comments`, `mcp`, `--upgrade`, `--watch`, `--version`), or when editing a markdown file that is already shared with `gander watch`.
+Also invoke when the user references any gander subcommand (`signup`, `share`, `list`, `remove`, `invite`, `manage`, `dashboard`, `dash`, `--d`, `auth`, `comments`, `mcp`, `--upgrade`, `--watch`, `--version`), or when editing a markdown file that is already shared with `gander watch`.
 
 ## Install + verify
 
@@ -153,6 +154,19 @@ gander remove https://gander.md/s/xK7m2pQa   # remove by URL
 gander remove xK7m2pQa             # remove by short ID
 gander remove --all                # remove every share on the account
 ```
+
+### Invite a teammate
+
+Prints an invite URL to stdout (shown once). Does not open the owner's browser — this is a link to send to someone else. Listing, revoking, and re-inviting stay on the dashboard (`gander manage`).
+
+```bash
+gander invite                           # print a team invite URL (shown once)
+gander invite --email you@example.com   # bind the invite to that address
+gander invite --share xK7m2pQa          # after accept, land on that private share
+gander invite --share https://gander.md/s/xK7m2pQa
+```
+
+`--share` is an 8-character short ID from `gander list`, or a share URL. The share must be owned by the caller and private. There is no MCP tool for invite; shell out to `gander invite`.
 
 ### Open the dashboard
 
@@ -324,7 +338,7 @@ Source-build installs: `git pull && ./install.sh --source` (or rebuild manually)
 ## Gotchas
 
 - **Flags before the markdown path.** Go's flag parser stops at the first positional arg. `gander README.md --watch` does NOT work.
-- **Share/list/remove/manage are hidden until signup.** They don't appear in `gander --help` until `~/.gander/config.json` has an `api_token`.
+- **Share/list/remove/invite/manage are hidden until signup.** They don't appear in `gander --help` until `~/.gander/config.json` has an `api_token`.
 - **Token rotation is a two-step dance.** Rotate in the dashboard (`gander manage` / `gander dash` → rotate), then on every machine run `gander auth <new_token>`. The CLI validates the new token before overwriting `~/.gander/config.json`.
 - **`--upgrade` needs a release build.** Dev / source builds print an error and point you at the install script.
 - **`~/.mdp` legacy fallback** only applies when `GANDER_CONFIG` is unset. Named profiles (`~/.gander.dev`, etc.) never fall back to `.mdp`.
@@ -350,6 +364,7 @@ Source-build installs: `git pull && ./install.sh --source` (or rebuild manually)
 - **Never** commit `~/.gander/` (it contains `api_token`). It must remain gitignored.
 - **Never** auto-gander files detected by the watcher — always prompt first.
 - **Never** invoke `gander share` against a file the user didn't ask to share.
+- **Never** invoke `gander invite` unless the user asked to mint a team invite.
 - **Never** overwrite an existing plan markdown silently — the script disambiguates with `-2`, `-3`, … suffixes for a reason.
 - **Always** pipe the full plan body to `scripts/save-plan.sh`, not a summary. The user wants the actual plan on disk.
 - **Always** use `scripts/watch-markdown.sh --stop` (or kill the recorded PID) before assuming a watcher has stopped — the process forks on `--background`.

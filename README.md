@@ -4,7 +4,7 @@ An end-user [Agent Skill](https://agentskills.io) for the [gander](https://githu
 
 ## What it does
 
-- **Render, share, manage markdown** with the `gander` CLI (render locally, share on gander.md, list/remove shares, open the dashboard, sign up, rotate tokens, upgrade).
+- **Render, share, manage markdown** with the `gander` CLI (render locally, share on gander.md, list/remove shares, mint team invites, open the dashboard, sign up, rotate tokens, upgrade).
 - **Watch for new markdown files** in any directory and prompt to gander each one (`y` = preview, `s` = share, `N` = skip). Foreground or `--background`.
 - **Save agent-produced plans as markdown** to `./plans/YYYY-MM-DD-<slug>.md`, then offer to gander the result.
 
