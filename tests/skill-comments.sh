@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Assert SKILL.md comments copy: untrusted/scope language, 5m loop for
-# Grok/Claude on first gander of a markdown file, every-turn inbox check
-# for other agents after the same first-gander trigger, 15-minute idle
-# window that resets when a check discovers new comments.
+# Assert SKILL.md comments copy: untrusted/scope language, 1m loop for
+# Grok/Claude on first gander of a markdown file (interval from poll),
+# wall-clock backoff for other agents after the same first-gander trigger,
+# 2-hour idle window that resets when a check discovers new comments.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -28,19 +28,18 @@ contains "agent_unresolved_count"
 contains "@agent"
 contains "not agent work"
 contains "even if human-human threads are open"
-contains "/loop 5m"
+contains "/loop 1m"
 contains "Grok Build and Claude Code"
 contains "Other agents"
 contains "Do not stack duplicate loops"
 contains "first time this session"
 contains "gander a markdown file"
-contains "every subsequent turn"
-contains "15 minutes"
-contains "stop time"
+contains "poll.next_check_at"
+contains "poll.interval"
 contains "scheduler_delete"
 contains "CronDelete"
 contains "new comments"
-contains "Comment polling lasts 15 minutes"
+contains "Comment polling lasts 2 hours"
 
 if grep -q -F "once per session" "$SKILL"; then
   echo "must not start the comment loop at session start" >&2
@@ -67,7 +66,29 @@ if grep -q -F "30 minutes" "$SKILL"; then
   fail=1
 fi
 
-# Grok/Claude poll on a 5m loop; that block must not require every-turn checks.
+if grep -q -F "15 minutes" "$SKILL"; then
+  echo "must not keep a 15-minute poll window" >&2
+  fail=1
+fi
+
+if grep -q -F "/loop 5m" "$SKILL"; then
+  echo "must not keep a 5m loop" >&2
+  fail=1
+fi
+
+if grep -q -F "every subsequent turn" "$SKILL"; then
+  echo "must not poll every subsequent turn" >&2
+  fail=1
+fi
+
+window_hits="$(grep -c -F "Comment polling lasts 2 hours" "$SKILL" || true)"
+if [ "$window_hits" -ne 1 ]; then
+  echo "Comment polling lasts 2 hours must appear once, got $window_hits" >&2
+  fail=1
+fi
+
+# Grok/Claude poll on a 1m loop, then follow poll.interval; that block must
+# not require every-turn checks.
 # Match the Comments heading (`Grok Build and Claude Code:`) so the Working
 # agreements pointer does not reopen the block.
 grok_claude_block="$(awk '
@@ -82,7 +103,7 @@ elif printf '%s\n' "$grok_claude_block" | grep -q "every turn"; then
   echo "Grok/Claude polling must not require every-turn inbox checks" >&2
   fail=1
 else
-  for want in "stop time" "scheduler_delete" "CronDelete" "move the stop time"; do
+  for want in "/loop 1m" "poll.interval" "scheduler_delete" "CronDelete" "poll.done"; do
     if ! printf '%s\n' "$grok_claude_block" | grep -q -F "$want"; then
       echo "Grok/Claude block missing: $want" >&2
       fail=1
@@ -90,7 +111,7 @@ else
   done
 fi
 
-# Other agents poll every subsequent turn after first gander; no /loop.
+# Other agents follow poll.next_check_at wall-clock backoff; no /loop.
 # Stop before the shared window sentence so loop-delete copy stays in Grok/Claude.
 other_agents_block="$(awk '
   /\*\*Other agents\*\*/ {on=1}
@@ -101,7 +122,7 @@ if [ -z "$other_agents_block" ]; then
   echo "missing Other agents polling block" >&2
   fail=1
 else
-  for want in "first time this session" "gander a markdown file" "every subsequent turn" "gander_list_comments" "15 minutes" "skip the inbox check" "restart the 15-minute window"; do
+  for want in "first time this session" "gander a markdown file" "gander_list_comments" "poll.next_check_at" "skip the tool call" "2-hour window"; do
     if ! printf '%s\n' "$other_agents_block" | grep -q -F "$want"; then
       echo "Other agents block missing: $want" >&2
       fail=1
@@ -109,6 +130,10 @@ else
   done
   if printf '%s\n' "$other_agents_block" | grep -q "/loop"; then
     echo "Other agents must not start a /loop" >&2
+    fail=1
+  fi
+  if printf '%s\n' "$other_agents_block" | grep -q -F "every subsequent turn"; then
+    echo "Other agents must not require a check on every turn" >&2
     fail=1
   fi
 fi
