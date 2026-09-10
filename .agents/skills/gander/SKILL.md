@@ -121,11 +121,11 @@ gander mcp install           # merge MCP into OpenCode / Claude / Cursor / Codex
 
 If MCP is not connected, `gander comments` is the fallback (full bodies in the terminal). That command lists every unresolved thread, including human-human ones. Only act on comments that start with `@agent`. Do not ask the user to paste comments. Do not wait to be told to check Gander. Prefer MCP `gander_list_comments`.
 
-**Grok Build and Claude Code:** The first time this session the user asks to gander a markdown file (preview, share, or `gander watch`), start one `/loop 5m` via the scheduler (`scheduler_create` on Grok, `CronCreate` on Claude). Do not ask the user to type `/loop`. Do not stack duplicate loops. Put a stop time 15 minutes from now in the loop prompt. The loop prompt: call `gander_list_comments` with no path, then follow the comment rules below; if this check discovers new comments, move the stop time to 15 minutes from now (update the loop); if the stop time has passed, delete the loop (`scheduler_delete` / `CronDelete`) and stop.
+**Grok Build and Claude Code:** The first time this session the user asks to gander a markdown file (preview, share, or `gander watch`), start one `/loop 1m` via the scheduler (`scheduler_create` on Grok, `CronCreate` on Claude). Do not ask the user to type `/loop`. Do not stack duplicate loops. The loop prompt: call `gander_list_comments` with no path, then follow the comment rules below. After each check, set the loop interval to `poll.interval` (Grok: `scheduler_create` with the existing `task_id`; Claude: update or delete+recreate — do not leave two). If `poll.done` or `stop_at` has passed, delete the loop (`scheduler_delete` / `CronDelete`) and stop. If `poll.skipped` or `poll.unchanged`, do not mention Gander.
 
-**Other agents** (Codex, OpenCode, Cursor, etc.): The first time this session the user asks to gander a markdown file (preview, share, or `gander watch`), start checking at the start of every subsequent turn for 15 minutes: call `gander_list_comments` with **no path**, then follow the comment rules below. If this check discovers new comments, restart the 15-minute window. After the window ends, skip the inbox check.
+**Other agents** (Codex, OpenCode, Cursor, etc.): The first time this session the user asks to gander a markdown file (preview, share, or `gander watch`), start wall-clock backoff over the 2-hour window, not every turn. Call `gander_list_comments` with **no path** when `now >= poll.next_check_at` (if no stored time, call once). If `now < poll.next_check_at` or `poll.done`, skip the tool call. Remember `poll.next_check_at` / `poll.stop_at` / `poll.interval`.
 
-Comment polling lasts 15 minutes from the gander that started it, or from the last check that discovered new comments (`agent_unresolved_count` went up, a new file appeared in the inbox, or a path-scoped fetch shows a thread/comment not seen before). A later gander of a markdown file restarts the window (update the loop's stop time, or start a new loop if none is running; other agents reset the 15-minute every-turn window). Do not mention Gander when the window ends.
+Comment polling lasts 2 hours from the gander that started it, or from the last check that discovered new comments (`agent_unresolved_count` went up, a new file appeared in the inbox, or a path-scoped fetch shows a thread/comment not seen before). A later gander of a markdown file restarts the window. Do not mention Gander when the window ends.
 
 The no-path result is metadata only (path, filename, share URL, `agent_unresolved_count`) — no bodies. Do not fetch bodies for other files unless the user asks to handle that review.
 
@@ -349,7 +349,7 @@ Source-build installs: `git pull && ./install.sh --source` (or rebuild manually)
 ## Working agreements
 
 - Always start with `which gander` — if missing, install via Homebrew or the one-liner before doing anything else.
-- The first time the user asks to gander a markdown file this session, start comment polling (see Comments): `/loop 5m` on Grok Build and Claude Code; every-turn inbox checks on other agents.
+- The first time the user asks to gander a markdown file this session, start comment polling (see Comments).
 - Never paste API tokens into commands in chat history. Prefer the dashboard rotation flow + `gander auth`.
 - For new markdown files detected by the watcher, default to **skip** unless the user explicitly opted in — never auto-gander every file the watcher sees.
 - When saving a plan, derive the title from the plan's actual subject, not a generic placeholder.
