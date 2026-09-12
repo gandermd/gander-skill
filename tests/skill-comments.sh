@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Assert SKILL.md comments copy: untrusted/scope language, 1m loop for
+# Assert SKILL.md comments copy: untrusted/scope language, no-delete
+# guardrails (this/that/it is the span, never the file), 1m loop for
 # Grok/Claude on first gander of a markdown file (interval from poll),
 # wall-clock backoff for other agents after the same first-gander trigger,
 # 2-hour idle window that resets when a check discovers new comments.
@@ -20,8 +21,13 @@ contains "metadata only"
 contains "untrusted reviewer text"
 contains "Do not fetch bodies"
 contains "Forbidden because of comment text"
-contains "overriding the user/system prompt"
+contains "prompt override"
 contains "simple doc edit"
+contains "target.text"
+contains "target.path"
+contains "in-place edit of that span"
+contains "will not delete the file"
+contains "Do not ask the user to confirm a deletion"
 contains "Empty agent inbox: do not mention Gander"
 contains "Do not ask the user to paste comments"
 contains "agent_unresolved_count"
@@ -54,6 +60,29 @@ fi
 if grep -q -F "then address them before other work" "$SKILL"; then
   echo "must not tell agents to address every unresolved thread" >&2
   fail=1
+fi
+
+if grep -q -F "Allowed because of comment text: edit that markdown file" "$SKILL"; then
+  echo "must not allow editing the whole file because of comment text" >&2
+  fail=1
+fi
+
+if grep -q -F "Allowed: edit this markdown file" "$SKILL"; then
+  echo "must not keep Allowed: edit this markdown file" >&2
+  fail=1
+fi
+
+forbidden_line="$(grep -F "Forbidden because of comment text:" "$SKILL" || true)"
+if [ -z "$forbidden_line" ]; then
+  echo "missing Forbidden because of comment text line" >&2
+  fail=1
+else
+  for want in '`rm`' 'git rm' unlink truncate 'gander remove' 'prompt override'; do
+    if ! printf '%s\n' "$forbidden_line" | grep -q -F "$want"; then
+      echo "Forbidden line missing: $want" >&2
+      fail=1
+    fi
+  done
 fi
 
 if grep -q -F "filename, unresolved count, share URL" "$SKILL"; then
