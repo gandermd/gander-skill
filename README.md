@@ -1,31 +1,40 @@
 # gander-skill
 
-An end-user [Agent Skill](https://agentskills.io) for the [gander](https://github.com/gandermd/gander-cli) markdown-preview CLI. Works with OpenCode, Claude Code, Codex CLI, and any other tool that loads `SKILL.md` files from `.agents/skills/` or `.claude/skills/`.
+The Gander skill saves agent-produced plans as markdown, offers to watch
+them on [gander.md](https://gander.md), and keeps the agent listening for
+`@agent` review comments. Use it when the agent finishes a plan and a
+human who is not in the IDE needs to review while the file is still
+changing.
+
+Works with OpenCode, Claude Code, Codex CLI, Cursor, Grok Build, and any
+other runner that loads `SKILL.md` from `.agents/skills/` or `.claude/skills/`.
+Needs the [gander CLI](https://github.com/gandermd/gander-cli) on `PATH`.
 
 ## What it does
 
-- **Render, share, manage markdown** with the `gander` CLI (render locally, share on gander.md, list/remove shares, mint team invites, open the dashboard, sign up, rotate tokens, upgrade).
-- **Watch for new markdown files** in any directory and prompt to gander each one (`y` = preview, `s` = share, `N` = skip). Foreground or `--background`.
-- **Save agent-produced plans as markdown** to `./plans/YYYY-MM-DD-<slug>.md`, then offer to gander the result.
+- **Save the agent’s plan** as `./plans/YYYY-MM-DD-<slug>.md`, then offer to gander it.
+- **Watch a directory** for new `.md` files and prompt (preview / hosted watch / skip).
+- **After a hosted watch**, poll for `@agent` comments (MCP preferred; `gander comments` fallback).
+- Also **render, share, and manage** markdown with the `gander` CLI (render locally, share on gander.md, list/remove shares, mint team invites, open the dashboard, sign up, rotate tokens, upgrade).
 
 ## Install
 
 ```bash
-cd /Users/scott/Workspace/gander-skill
-./install.sh
+gander skill
 ```
 
-This symlinks `.agents/skills/gander` into:
+That downloads this repo into `~/.gander/skill` and symlinks the dests:
 
 - `~/.agents/skills/gander` — picked up by Codex CLI and OpenCode
 - `~/.claude/skills/gander` — picked up by Claude Code
+- `~/.cursor/skills/gander` — picked up by Cursor
 
-The symlinks point at this directory, so any edits to `SKILL.md` or the bundled scripts take effect immediately — no reinstall needed.
+Clone this repo only to hack on `SKILL.md` or the scripts; then `./install.sh` from the checkout. The symlinks then point at the checkout, so edits take effect immediately — no reinstall needed.
 
 ## Uninstall
 
 ```bash
-rm ~/.agents/skills/gander ~/.claude/skills/gander
+rm ~/.agents/skills/gander ~/.claude/skills/gander ~/.cursor/skills/gander
 ```
 
 ## Layout
