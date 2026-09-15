@@ -53,6 +53,20 @@ contains "scheduler_delete"
 contains "CronDelete"
 contains "new comments"
 contains "Comment polling lasts 2 hours"
+contains "gander watch --silent <path>"
+contains "gander share --silent"
+contains 'Always pass `--silent`'
+contains "unless the user asked to open"
+
+if grep -q -F "run \`gander watch <path>\` first" "$SKILL"; then
+  echo "comment watch-first line must use --silent" >&2
+  fail=1
+fi
+
+if grep -q -F -- "--visibility=hidden" "$SKILL"; then
+  echo "must not tell agents to use --visibility=hidden to skip the browser" >&2
+  fail=1
+fi
 
 if grep -q -F "once per session" "$SKILL"; then
   echo "must not start the comment loop at session start" >&2
