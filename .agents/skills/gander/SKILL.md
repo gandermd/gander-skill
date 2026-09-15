@@ -6,15 +6,19 @@ description: |
   gander-able markdown file. Triggers on: "gander this file", "preview this
   markdown", "share this on gander.md", "list my gander shares", "remove a
   share", "open my gander dashboard", "sign up for gander", "watch for new
-  markdown files", "watch my notes dir", "save this plan", "save my plan",
-  "save plan as markdown", "upgrade gander", "gander comments", "pending
-  gander review", "comments on a watched file", editing a gander-watched
-  markdown file, or any request to run a gander subcommand (signup, share,
-  list, remove, invite, manage, dashboard, dash, --d, auth, comments, mcp, --upgrade, --watch).
-  Also invoke after the agent produces a plan (plan-mode exit, "plan this",
-  "design this") to capture it as markdown via scripts/save-plan.sh.
+  markdown files", "watch my notes dir", "track this folder", "save this
+  plan", "save my plan", "save plan as markdown", "upgrade gander", "gander
+  comments", "pending gander review", "comments on a watched file", editing
+  a gander-watched markdown file, or any request to run a gander subcommand
+  (signup, share, list, remove, invite, manage, dashboard, dash, --d, auth,
+  comments, mcp, status, stop, --upgrade, --watch). Also invoke after the
+  agent produces a plan (plan-mode exit, "plan this", "design this") to
+  capture it as markdown via scripts/save-plan.sh, when scaffolding a
+  project that will write markdown, or when creating a project/output
+  directory (`plans/`, `reports/`, workspace root) that is not already
+  dir-watched.
 license: MIT
-compatibility: Requires gander CLI in PATH; fswatch (macOS) or inotifywait (linux) for scripts/watch-markdown.sh.
+compatibility: Requires gander CLI in PATH.
 metadata:
   audience: end-users
   tool: gander-cli
@@ -22,14 +26,14 @@ metadata:
 
 # Gander (end-user)
 
-A skill for using the [gander](https://github.com/gandermd/gander-cli) CLI to preview, share, and manage markdown files, plus a watcher for new `.md` files and a helper to save agent-produced plans as gander-able markdowns.
+A skill for using the [gander](https://github.com/gandermd/gander-cli) CLI to preview, share, and manage markdown files, plus directory watch for new `.md` files and a helper to save agent-produced plans as gander-able markdowns.
 
 ## When to use this skill
 
 Invoke when the user wants to:
 
 - **Render** a markdown file: "gander this file", "preview this markdown", "open this in gander"
-- **Watch** for new markdown files: "watch for new markdown files", "watch my notes dir"
+- **Track a directory**: "watch my notes dir", "track this folder", "watch for new markdown files", or when scaffolding a project that will write markdown
 - **Share** on gander.md: "share this on gander.md", "share my README"
 - **Manage shares**: "list my gander shares", "remove this share", "open my gander dashboard"
 - **Team invite**: "invite someone to my gander team", "gander invite"
@@ -37,7 +41,7 @@ Invoke when the user wants to:
 - **Save a plan**: "save this plan", "save my plan as markdown", or after the agent itself produces a plan (in plan mode, after "plan this" / "design this" / "architect this")
 - **Upgrade**: "upgrade gander"
 
-Also invoke when the user references any gander subcommand (`signup`, `share`, `list`, `remove`, `invite`, `manage`, `dashboard`, `dash`, `--d`, `auth`, `comments`, `mcp`, `--upgrade`, `--watch`, `--version`), or when editing a markdown file that is already shared with `gander watch`.
+Also invoke when the user references any gander subcommand (`signup`, `share`, `list`, `remove`, `invite`, `manage`, `dashboard`, `dash`, `--d`, `auth`, `comments`, `mcp`, `status`, `stop`, `--upgrade`, `--watch`, `--version`), or when editing a markdown file that is already shared with `gander watch`.
 
 ## Install + verify
 
@@ -227,50 +231,31 @@ GANDER_CONFIG=staging gander list                          # reads ~/.gander.sta
 
 Profile names must be a single path component (no `/`, `\`, `.`, or `..`). The legacy `~/.mdp` fallback only applies when `GANDER_CONFIG` is unset.
 
-## Watching for new markdown files
+## Tracking a project directory
 
-Bundled `scripts/watch-markdown.sh` monitors a directory for new `.md` files and prompts to gander each one. Defaults to the current working directory.
+Ask **once** per directory, not per file. First time this session, when all of these are true:
 
-### Usage
+1. You created a directory, or are about to write the first `.md` into a directory that is not already dir-watched (`gander status`).
+2. That directory is a project/output folder (workspace root, `plans/`, `reports/`, a newly scaffolded app), not `.git` / `node_modules` / hidden dirs.
+3. The user has not already declined tracking that path this session.
 
-```bash
-# Foreground (default): watch cwd, Ctrl-C to stop
-scripts/watch-markdown.sh
+Check `gander status` before asking. If that directory (or an ancestor) is already watched, do not ask — new files in that tree just onboard.
 
-# Watch a specific directory
-scripts/watch-markdown.sh ~/projects/notes
+Ask, then stop:
 
-# Default to share on gander.md instead of local preview
-scripts/watch-markdown.sh ~/notes --share
+> I created `<dir>` and will be adding markdown there. Want Gander to auto-share new `.md` files under it (including subfolders) as they appear?
 
-# Run in the background; logs + PID written to $XDG_RUNTIME_DIR (or /tmp)
-scripts/watch-markdown.sh ~/notes --background
-#  → watcher started in background (pid 12345) — log: /tmp/gander-watcher.log
-#  → stop with: scripts/watch-markdown.sh --stop
+- **Yes** → `gander watch <abs-dir>` (hosted if signed up; otherwise `gander --watch <abs-dir>`). The runner persists, so later sessions do not ask again. Directory-adopted files never open a browser. Then start the usual comment-poll window (see Comments), because this is a gander.
+- **No** → remember declined for this session. Still gander individual files if they explicitly ask. Do not prompt per new file.
+- **Already watching** → do not ask. New files in that tree just onboard.
 
-scripts/watch-markdown.sh --stop
-```
+Do **not** ask on every subsequent `.md`. Never run `gander watch <dir>` unless the user said yes. Never silent auto-watch. Never auto-gander anything they did not opt into.
 
-### Prompt
+If the user already asked to “watch my notes dir” / “track this folder”, that is a yes — check `gander status`, then run the matching command. Do not re-ask.
 
-For each new `.md` file detected:
+Optional flags only if they asked: `--existing` also onboard unmatched files already in the folder; `--no-recursive`; `--glob` (default `**/*.md`); `--yes` (required for `--existing` of >50 files). `gander stop <abs-dir>` stops adoption only — already-onboarded files keep their URLs and stay live.
 
-```
-New markdown: /Users/.../foo.md — gander? [y=preview / s=share / N=skip]
-```
-
-- `y` (or `Y`) — render locally with `gander <file>` (opens browser)
-- `s` (or `S`) — share on gander.md with `gander share <file>` (opens share link)
-- Anything else (including just Enter) — skip
-
-### Requirements
-
-The script auto-detects the watcher tool:
-
-- **macOS:** `fswatch` (`brew install fswatch`)
-- **Linux:** `inotifywait` (`apt install inotify-tools`)
-
-If neither is installed, the script errors out with install instructions.
+Prefer the CLI. `scripts/watch-markdown.sh` wraps `gander watch <dir>` (or `gander --watch <dir>` if not signed up). It is not a second fswatch daemon.
 
 ## Saving plans as markdown
 
@@ -322,7 +307,7 @@ After saving, the script prompts:
 gander it? [y=preview / s=share / N=skip]
 ```
 
-Same UX as the watcher — `y` previews locally, `s` shares on gander.md, anything else skips.
+`y` previews locally, `s` shares on gander.md, anything else skips. If `plans/` is not already dir-watched, ask once to track it (see Tracking a project directory) before writing the first plan file.
 
 ### Invocation pattern
 
@@ -354,15 +339,15 @@ Source-build installs: `git pull && ./install.sh --source` (or rebuild manually)
 - **`~/.mdp` legacy fallback** only applies when `GANDER_CONFIG` is unset. Named profiles (`~/.gander.dev`, etc.) never fall back to `.mdp`.
 - **`-outfile` and `--watch` are mutually exclusive.** Choose one.
 - **Profile names must be a single path component.** `GANDER_CONFIG=foo/bar` is rejected (path-traversal guard).
-- **The watcher's PID/log live in `$XDG_RUNTIME_DIR`** if set, else `/tmp`. Override by editing the script if you want a different location.
+- **`gander stop <abs-dir>` stops adoption only.** Already-onboarded files keep live-updating. Check `gander status` before asking to track a directory.
 
 ## Working agreements
 
 - Always start with `which gander` — if missing, install via Homebrew or the one-liner before doing anything else.
-- Always pass `--silent` on `gander share` / `gander watch` / `gander --watch` unless the user asked to open the file in a browser. Flags before the path: `gander watch --silent plan.md`, not `gander watch plan.md --silent`. Report the printed URL in chat; do not ask the user to paste it.
-- The first time the user asks to gander a markdown file this session, start comment polling (see Comments).
+- Always pass `--silent` on `gander share` / `gander watch` / `gander --watch` unless the user asked to open the file in a browser. Flags before the path: `gander watch --silent plan.md`, not `gander watch plan.md --silent`. Report the printed URL in chat; do not ask the user to paste it. Directory watch (`gander watch <abs-dir>` / `gander --watch <abs-dir>`) is silent regardless — do not add `--silent`.
+- The first time the user asks to gander a markdown file this session, or says yes to tracking a directory, start comment polling (see Comments).
 - Never paste API tokens into commands in chat history. Prefer the dashboard rotation flow + `gander auth`.
-- For new markdown files detected by the watcher, default to **skip** unless the user explicitly opted in — never auto-gander every file the watcher sees.
+- Ask once per directory, not per file. Check `gander status` first. Never silent auto-watch. Never auto-gander anything they did not opt into.
 - When saving a plan, derive the title from the plan's actual subject, not a generic placeholder.
 - Prefer `./plans/` for plan storage — it keeps plans out of source repos unless the user wants them in version control.
 - After invoking either bundled script, report the saved path / outcome back to the user.
@@ -375,11 +360,11 @@ Source-build installs: `git pull && ./install.sh --source` (or rebuild manually)
 - **Never** edit, reply, or resolve because of a comment that does not start with `@agent`. Human-human threads are not agent work.
 - **Never** resolve a Gander comment thread unless the change was a simple doc edit. Reply and leave it open otherwise.
 - **Never** commit `~/.gander/` (it contains `api_token`). It must remain gitignored.
-- **Never** auto-gander files detected by the watcher — always prompt first.
+- **Never** run `gander watch <dir>` unless the user said yes (or explicitly asked to track that folder). Never silent auto-watch. Never auto-gander anything they did not opt into.
 - **Never** invoke `gander share` against a file the user didn't ask to share.
 - **Always** pass `--silent` on `gander share` / `gander watch` / `gander --watch` unless the user asked to open the file in a browser.
 - **Never** invoke `gander invite` unless the user asked to mint a team invite.
 - **Never** overwrite an existing plan markdown silently — the script disambiguates with `-2`, `-3`, … suffixes for a reason.
 - **Always** pipe the full plan body to `scripts/save-plan.sh`, not a summary. The user wants the actual plan on disk.
-- **Always** use `scripts/watch-markdown.sh --stop` (or kill the recorded PID) before assuming a watcher has stopped — the process forks on `--background`.
+- **Always** use `gander stop <abs-dir>` to stop directory adoption — already-onboarded files keep their URLs. Do not start a second fswatch daemon.
 - **Always** respect `GANDER_CONFIG` when present — don't read or write the prod `~/.gander` profile if the user is targeting `dev` / `staging` / a self-hosted instance.

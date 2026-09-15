@@ -13,7 +13,7 @@ Needs the [gander CLI](https://github.com/gandermd/gander-cli) on `PATH`.
 ## What it does
 
 - **Save the agent’s plan** as `./plans/YYYY-MM-DD-<slug>.md`, then offer to gander it.
-- **Watch a directory** for new `.md` files and prompt (preview / hosted watch / skip).
+- **Watch a directory** with `gander watch <dir>` so new `.md` files auto-share (ask once; never silent auto-watch).
 - **After a hosted watch**, poll for `@agent` comments (MCP preferred; `gander comments` fallback).
 - Also **render, share, and manage** markdown with the `gander` CLI (render locally, share on gander.md, list/remove shares, mint team invites, open the dashboard, sign up, rotate tokens, upgrade).
 
@@ -46,7 +46,7 @@ gander-skill/
 └── .agents/skills/gander/                 # the skill itself (source of truth)
     ├── SKILL.md                           # agent instructions (~165 lines)
     └── scripts/
-        ├── watch-markdown.sh              # directory watcher + prompt
+        ├── watch-markdown.sh              # wraps `gander watch <dir>`
         └── save-plan.sh                   # plan → markdown + prompt
 ```
 
@@ -54,17 +54,23 @@ gander-skill/
 
 ### `scripts/watch-markdown.sh`
 
-Watch a directory for new `.md` files; prompt to gander each one.
+Thin wrapper around `gander watch <dir>` (hosted, if signed up) or
+`gander --watch <dir>` (local previews). Prefer the CLI; this script is
+not a second fswatch daemon. Directory-adopted files never open a browser.
 
 ```bash
-scripts/watch-markdown.sh                       # watch cwd
-scripts/watch-markdown.sh ~/projects/notes      # watch a specific dir
-scripts/watch-markdown.sh ~/notes --share       # default to share instead of preview
-scripts/watch-markdown.sh ~/notes --background  # daemonize
-scripts/watch-markdown.sh --stop                # stop backgrounded watcher
+gander watch ~/projects/notes                   # hosted directory watch
+gander --watch ~/notes                          # local previews if not signed up
+gander status                                   # already watching?
+gander stop ~/projects/notes                    # stop adoption only
+
+scripts/watch-markdown.sh ~/projects/notes      # same as gander watch / --watch
+scripts/watch-markdown.sh ~/notes --share       # force hosted watch
+scripts/watch-markdown.sh --stop ~/notes        # gander stop (adoption only)
 ```
 
-Requires `gander` in `PATH` plus `fswatch` (macOS) or `inotifywait` (linux).
+Requires `gander` in `PATH`. Optional CLI flags the wrapper forwards:
+`--existing`, `--no-recursive`, `--glob`, `--yes`.
 
 ### `scripts/save-plan.sh`
 
