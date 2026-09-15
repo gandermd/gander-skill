@@ -1,35 +1,50 @@
 #!/usr/bin/env bash
-# scripts/watch-markdown.sh — watch a directory for new .md files; prompt to gander each one.
+# scripts/watch-markdown.sh — wrap `gander watch <dir>` (or `gander --watch <dir>`).
+#
+# Deprecated as a product path: prefer the CLI. The runner persists; this
+# script does not start a second fswatch daemon.
 #
 # Usage:
-#   scripts/watch-markdown.sh                       # watch current working directory
+#   scripts/watch-markdown.sh                       # watch cwd via CLI
 #   scripts/watch-markdown.sh ~/projects/notes      # watch a specific directory
-#   scripts/watch-markdown.sh ~/notes --share       # default to share instead of preview
-#   scripts/watch-markdown.sh ~/notes --background  # daemonize; PID + log in $XDG_RUNTIME_DIR (or /tmp)
-#   scripts/watch-markdown.sh --stop                # stop the backgrounded watcher
+#   scripts/watch-markdown.sh ~/notes --share       # hosted watch (requires signup)
+#   scripts/watch-markdown.sh ~/notes --existing    # also onboard unmatched .md
+#   scripts/watch-markdown.sh ~/notes --no-recursive
+#   scripts/watch-markdown.sh ~/notes --glob 'daily-*.md'
+#   scripts/watch-markdown.sh --stop ~/notes        # gander stop (adoption only)
 #   scripts/watch-markdown.sh --help
-#
-# Prompt: y=preview / s=share / N=skip
-# Requires: gander CLI; fswatch (macOS: brew install fswatch) or inotifywait (linux: apt install inotify-tools).
 
 set -euo pipefail
 
-ACTION="preview"
-DIR=""
-BACKGROUND=0
+SHARE=0
 STOP=0
+BACKGROUND=0
+DIR=""
+EXTRA=()
 
 usage() {
-  sed -n '2,15p' "$0"
+  sed -n '2,16p' "$0"
   exit "${1:-0}"
 }
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --share)        ACTION="share"; shift ;;
+    --share)         SHARE=1; shift ;;
+    --existing)      EXTRA+=(--existing); shift ;;
+    --no-recursive)  EXTRA+=(--no-recursive); shift ;;
+    --yes)           EXTRA+=(--yes); shift ;;
+    --glob)
+      if [ $# -lt 2 ]; then
+        echo "error: --glob requires a pattern" >&2
+        usage 2
+      fi
+      EXTRA+=(--glob "$2")
+      shift 2
+      ;;
+    --glob=*)        EXTRA+=("$1"); shift ;;
     --background|-b) BACKGROUND=1; shift ;;
-    --stop)         STOP=1; shift ;;
-    -h|--help)      usage 0 ;;
+    --stop)          STOP=1; shift ;;
+    -h|--help)       usage 0 ;;
     -*) echo "error: unknown flag $1" >&2; usage 2 ;;
     *)
       if [ -z "$DIR" ]; then DIR="$1"; shift
@@ -39,25 +54,38 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-STATE_DIR="${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}"
-PIDFILE="$STATE_DIR/gander-watcher.pid"
-LOGFILE="$STATE_DIR/gander-watcher.log"
+if ! command -v gander >/dev/null 2>&1; then
+  echo "error: gander CLI not found in PATH" >&2
+  echo "install: brew tap gandermd/gander && brew install gander" >&2
+  echo "     or: curl -fsSL https://raw.githubusercontent.com/gandermd/gander-cli/main/install.sh | bash" >&2
+  exit 1
+fi
+
+config_path() {
+  if [ -n "${GANDER_CONFIG:-}" ]; then
+    printf '%s\n' "${HOME}/.gander.${GANDER_CONFIG}/config.json"
+  else
+    printf '%s\n' "${HOME}/.gander/config.json"
+  fi
+}
+
+signed_up() {
+  local cfg
+  cfg="$(config_path)"
+  [ -f "$cfg" ] && grep -Eq '"api_token":[[:space:]]*"[^[:space:]"]+"' "$cfg"
+}
 
 if [ "$STOP" = 1 ]; then
-  if [ ! -f "$PIDFILE" ]; then
-    echo "no watcher pidfile at $PIDFILE"
-    exit 0
+  if [ -z "$DIR" ]; then
+    echo "error: --stop requires a directory (gander stop <abs-dir>)" >&2
+    usage 2
   fi
-  pid=$(cat "$PIDFILE" 2>/dev/null || true)
-  if [ -z "$pid" ] || ! kill -0 "$pid" 2>/dev/null; then
-    echo "no watcher running (stale pidfile $PIDFILE)"
-    rm -f "$PIDFILE"
-    exit 0
+  if [ ! -d "$DIR" ]; then
+    echo "error: not a directory: $DIR" >&2
+    exit 1
   fi
-  kill "$pid"
-  rm -f "$PIDFILE"
-  echo "stopped watcher (pid $pid)"
-  exit 0
+  DIR="$(cd "$DIR" && pwd)"
+  exec gander stop "$DIR"
 fi
 
 DIR="${DIR:-$(pwd)}"
@@ -68,48 +96,18 @@ fi
 DIR="$(cd "$DIR" && pwd)"
 
 if [ "$BACKGROUND" = 1 ]; then
-  if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
-    echo "watcher already running (pid $(cat "$PIDFILE"))" >&2
-    exit 1
+  echo "note: the gander runner persists; --background is a no-op" >&2
+fi
+
+echo "note: prefer \`gander watch <dir>\` (or \`gander --watch <dir>\` if not signed up). This script wraps the CLI." >&2
+
+if [ "$SHARE" = 1 ] || signed_up; then
+  if [ ${#EXTRA[@]} -gt 0 ]; then
+    exec gander watch "${EXTRA[@]}" "$DIR"
   fi
-  nohup "$0" "$DIR" >"$LOGFILE" 2>&1 &
-  echo $! > "$PIDFILE"
-  echo "watcher started in background (pid $!)"
-  echo "  dir:  $DIR"
-  echo "  log:  $LOGFILE"
-  echo "  stop: $0 --stop"
-  exit 0
+  exec gander watch "$DIR"
 fi
-
-if ! command -v gander >/dev/null 2>&1; then
-  echo "error: gander CLI not found in PATH" >&2
-  echo "install: brew install gander  OR  curl -fsSL https://raw.githubusercontent.com/gandermd/gander-cli/main/install.sh | bash" >&2
-  exit 1
+if [ ${#EXTRA[@]} -gt 0 ]; then
+  exec gander --watch "${EXTRA[@]}" "$DIR"
 fi
-
-if command -v fswatch >/dev/null 2>&1; then
-  WATCH=(fswatch --event Created -0 "$DIR")
-elif command -v inotifywait >/dev/null 2>&1; then
-  WATCH=(inotifywait -m -e create --format '%w%f' "$DIR")
-else
-  echo "error: install fswatch (macOS: brew install fswatch) or inotifywait (linux: apt install inotify-tools)" >&2
-  exit 1
-fi
-
-trap 'echo; exit 0' INT TERM
-echo "Watching $DIR for new .md files (Ctrl-C to stop)..."
-
-"${WATCH[@]}" | while IFS= read -r -d $'\0' f; do
-  case "$f" in
-    *.md) ;;
-    *) continue ;;
-  esac
-  [ -f "$f" ] || continue
-  printf '\nNew markdown: %s — gander? [y=preview / s=share / N=skip] ' "$f"
-  read -r ans
-  case "$ans" in
-    y|Y) gander "$f" ;;
-    s|S) gander share "$f" ;;
-    *)   echo "  skipped" ;;
-  esac
-done
+exec gander --watch "$DIR"
