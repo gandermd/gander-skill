@@ -12,8 +12,9 @@ Needs the [gander CLI](https://github.com/gandermd/gander-cli) on `PATH`.
 
 ## What it does
 
-- **Save the agent’s plan** as `./plans/YYYY-MM-DD-<slug>.md`, then offer to gander it.
-- **Watch a directory** with `gander watch <dir>` so new `.md` files auto-share (ask once; never silent auto-watch).
+- **Save the agent’s plan** as `./plans/YYYY-MM-DD-<slug>.md` with `status: draft`, then offer to **watch** it (live updates, not a static share).
+- **Share vs watch by doc type**: reports are static snapshots (`gander share`); plans, RFCs, and drafts stay live-watched (`gander watch`). Type labels (`plan`, `rfc`, `draft`, `design`, `spec`, `report`) are additive — the CLI merges them; do not replace existing tags.
+- **Watch a directory** with `gander watch <dir>` so new `.md` files auto-onboard (ask once; never silent auto-watch). The runner classifies each file (reports onboard as static shares labeled `report`; plans stay live-watched).
 - **After a hosted watch**, poll for `@agent` comments (MCP preferred; `gander comments` fallback).
 - Also **render, share, and manage** markdown with the `gander` CLI (render locally, share on gander.md, list/remove shares, mint team invites, open the dashboard, sign up, rotate tokens, upgrade).
 
@@ -74,7 +75,7 @@ Requires `gander` in `PATH`. Optional CLI flags the wrapper forwards:
 
 ### `scripts/save-plan.sh`
 
-Save an agent-produced plan as a markdown file; offer to gander it.
+Save an agent-produced plan as a markdown file; offer to watch it.
 
 ```bash
 cat plan.txt | scripts/save-plan.sh "Add token rotation to gander"
@@ -82,7 +83,7 @@ scripts/save-plan.sh "Refactor share rendering" plan.md
 PLAN_SOURCE=opencode scripts/save-plan.sh "Plan title here"
 ```
 
-Saves to `./plans/YYYY-MM-DD-<slug>.md` with a title heading and metadata block. Override the save directory with `PLAN_DIR=/some/path`.
+Saves to `./plans/YYYY-MM-DD-<slug>.md` with YAML `status: draft`, a title heading, and a metadata block. Post-save `s` watches (`gander watch --silent`); it does not static-share. Piped runs skip the prompt without failing. Override the save directory with `PLAN_DIR=/some/path`.
 
 ## Editing
 

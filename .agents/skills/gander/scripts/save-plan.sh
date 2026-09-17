@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# scripts/save-plan.sh — save agent-produced plan as a markdown file; offer to gander it.
+# scripts/save-plan.sh — save agent-produced plan as a markdown file; offer to watch it.
 #
 # Usage:
 #   scripts/save-plan.sh "<plan title>"               # read plan from stdin
@@ -8,12 +8,17 @@
 #
 # Default save location: ./plans/YYYY-MM-DD-<slug>.md (creates ./plans/ if missing).
 # Wrapper format:
+#     ---
+#     status: draft
+#     ---
+#
 #     # <Title>
 #
 #     > Saved YYYY-MM-DD HH:MM from <source>
 #
 #     <plan content>
-# After saving, prompts: y=preview / s=share / N=skip
+# After saving, prompts: y=preview / s=watch / N=skip
+# Piped / non-interactive runs skip the prompt without failing.
 # Env: PLAN_DIR (default ./plans), PLAN_SOURCE (default "agent").
 
 set -euo pipefail
@@ -26,7 +31,7 @@ slugify() {
 }
 
 usage() {
-  sed -n '2,15p' "$0"
+  sed -n '2,23p' "$0"
   exit "${1:-0}"
 }
 
@@ -77,16 +82,26 @@ done
 SOURCE="${PLAN_SOURCE:-agent}"
 
 {
+  printf '%s\n' '---'
+  printf '%s\n' 'status: draft'
+  printf '%s\n' '---'
+  printf '\n'
   printf '# %s\n\n' "$TITLE"
   printf '> Saved %s %s from %s\n\n' "$DATE" "$TIME" "$SOURCE"
   printf '%s\n' "$CONTENT"
 } > "$DEST"
 
 echo "saved: $DEST"
-printf 'gander it? [y=preview / s=share / N=skip] '
-read -r ans
+
+ans=""
+# Content from a file leaves stdin free for the prompt. Piped plan bodies
+# consume stdin — skip instead of hanging or exiting non-zero.
+if [ -n "$SRC" ] || [ -t 0 ]; then
+  printf 'gander it? [y=preview / s=watch / N=skip] '
+  read -r ans || true
+fi
 case "$ans" in
   y|Y) gander "$DEST" ;;
-  s|S) gander share "$DEST" ;;
+  s|S) gander watch --silent "$DEST" ;;
   *)   echo "  skipped" ;;
 esac
