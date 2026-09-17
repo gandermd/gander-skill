@@ -96,13 +96,28 @@ Opens the signup form in your browser. Submit it; the CLI polls for the API toke
 
 ### Share a file
 
+When gandering a **file**, pick static share vs live watch from likelihood of change. Never override an explicit user request (`share this` vs `watch this`). If that path is already in a dir-watched tree (`gander status`), do **not** also share/watch it — the runner classifies on adopt.
+
+- **Report** → `gander share --silent` (static snapshot)
+- **Plan, RFC, or doc marked draft** → `gander watch --silent` (live updates)
+- If unsure, **watch**. Watch-signal beats static if both fire (`reports/draft-rfc.md` watches).
+
+Agree with the CLI on obvious cases:
+
+1. YAML frontmatter: `gander: watch` → watch; `gander: share` / `gander: static` → static
+2. `status:` / `draft:` — `draft`, `wip`, `rfc`, `proposed`, `review` → watch; `final`, `published`, `shipped`, `complete`, `archived` → static
+3. Path segments: `plans` / `rfcs` / `drafts` / `design` / `specs` → watch; `reports` / `outbox` / `archive` → static
+4. Filename tokens, then first heading (same word lists)
+5. Default → watch
+
 ```bash
-gander share --silent README.md
-gander watch --silent README.md
-gander share --watch --silent README.md
+gander share --silent reports/daily.md
+gander watch --silent plans/token-rotation.md
 ```
 
 `--silent` uploads/registers and prints the URL; it does not open a browser. Omit it only when the user asked to open or preview. Report the printed URL in chat. Do not ask the user to paste it.
+
+The CLI stamps a type label (`plan`, `rfc`, `draft`, `design`, `spec`, `report`) by merging it into existing labels. Do **not** pass `--label plan` / `--label report` just to stamp type. Extra tags (`--label review`) are fine. Never `--no-labels` unless the user asked to clear. Never send a labels array that drops existing tags (POST `labels` replaces the whole set).
 
 Records the share mapping in `~/.gander/config.json` (path → short ID) so future invocations know it.
 
@@ -272,9 +287,13 @@ The script auto-detects the watcher tool:
 
 If neither is installed, the script errors out with install instructions.
 
+### Tracking a project directory
+
+When asking to track a folder, mention classification + type labels so users watching `~/reports` are not surprised: new reports onboard as static shares labeled `report`; plans, RFCs, and drafts stay live-watched. Do not also share/watch files in a dir-watched tree — the runner classifies. Never auto-gander anything they did not opt into.
+
 ## Saving plans as markdown
 
-Bundled `scripts/save-plan.sh` captures agent-produced plans as properly-formatted markdown files in `./plans/`, then offers to gander them. Use it any time you finish producing a plan — especially on plan-mode exit, or after responding to "plan this" / "design this" / "architect this".
+Bundled `scripts/save-plan.sh` captures agent-produced plans as properly-formatted markdown files in `./plans/`, then offers to **watch** them (live updates, not a static share). Use it any time you finish producing a plan — especially on plan-mode exit, or after responding to "plan this" / "design this" / "architect this". Plans always watch. When writing a plan, RFC, or draft (including via this script), add YAML frontmatter `status: draft` (or `gander: watch`) so the runner agrees if the folder is dir-watched.
 
 ### Usage
 
@@ -301,6 +320,10 @@ Override the save directory with `PLAN_DIR=/some/path`.
 Wrapper format:
 
 ```markdown
+---
+status: draft
+---
+
 # <Title>
 
 > Saved YYYY-MM-DD HH:MM from <source>
@@ -319,18 +342,18 @@ PLAN_SOURCE=opencode scripts/save-plan.sh "Add token rotation" < plan.txt
 After saving, the script prompts:
 
 ```
-gander it? [y=preview / s=share / N=skip]
+gander it? [y=preview / s=watch / N=skip]
 ```
 
-Same UX as the watcher — `y` previews locally, `s` shares on gander.md, anything else skips.
+`y` previews locally, `s` live-watches on gander.md (`gander watch --silent`), anything else skips. Piped / non-interactive runs skip the prompt without failing — then `gander watch --silent` the saved path yourself unless the directory is already dir-watched.
 
 ### Invocation pattern
 
 When you produce a plan in this skill:
 
 1. Pipe the plan body to `scripts/save-plan.sh "<descriptive title>"`
-2. Read the script's response — if the user wants to gander it, the script handles it
-3. Report the saved path back to the user
+2. If the save dir is not already dir-watched, `gander watch --silent` the saved path (plans always watch). Do not double-gander a dir-watched tree.
+3. Report the saved path (and URL, if any) back to the user
 
 ## Upgrading
 
@@ -360,6 +383,9 @@ Source-build installs: `git pull && ./install.sh --source` (or rebuild manually)
 
 - Always start with `which gander` — if missing, install via Homebrew or the one-liner before doing anything else.
 - Always pass `--silent` on `gander share` / `gander watch` / `gander --watch` unless the user asked to open the file in a browser. Flags before the path: `gander watch --silent plan.md`, not `gander watch plan.md --silent`. Report the printed URL in chat; do not ask the user to paste it.
+- Pick `gander share --silent` vs `gander watch --silent` from the Share a file table. Never override `share this` / `watch this`. Do not also gander files in a dir-watched tree.
+- Do not pass `--label plan` / `--label report` just to stamp type — the CLI merges it. Extra tags (`--label review`) are fine. Never `--no-labels` unless the user asked to clear.
+- When writing a plan / RFC / draft, add YAML frontmatter `status: draft` (or `gander: watch`).
 - The first time the user asks to gander a markdown file this session, start comment polling (see Comments).
 - Never paste API tokens into commands in chat history. Prefer the dashboard rotation flow + `gander auth`.
 - For new markdown files detected by the watcher, default to **skip** unless the user explicitly opted in — never auto-gander every file the watcher sees.
@@ -376,7 +402,12 @@ Source-build installs: `git pull && ./install.sh --source` (or rebuild manually)
 - **Never** resolve a Gander comment thread unless the change was a simple doc edit. Reply and leave it open otherwise.
 - **Never** commit `~/.gander/` (it contains `api_token`). It must remain gitignored.
 - **Never** auto-gander files detected by the watcher — always prompt first.
+- **Never** also share/watch a file that is already in a dir-watched tree — the runner classifies.
+- **Never** pass `--label plan` / `--label report` just to stamp type — the CLI merges it. Extra tags (`--label review`) are fine.
+- **Never** pass `--no-labels` unless the user asked to clear.
+- **Never** send a labels array that drops existing tags. POST `labels` replaces the whole set.
 - **Never** invoke `gander share` against a file the user didn't ask to share.
+- **Always** watch plans / RFCs / drafts (`gander watch --silent`) and static-share reports (`gander share --silent`), unless the user asked the other way.
 - **Always** pass `--silent` on `gander share` / `gander watch` / `gander --watch` unless the user asked to open the file in a browser.
 - **Never** invoke `gander invite` unless the user asked to mint a team invite.
 - **Never** overwrite an existing plan markdown silently — the script disambiguates with `-2`, `-3`, … suffixes for a reason.
