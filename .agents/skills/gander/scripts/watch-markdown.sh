@@ -7,7 +7,7 @@
 # Usage:
 #   scripts/watch-markdown.sh                       # watch cwd via CLI
 #   scripts/watch-markdown.sh ~/projects/notes      # watch a specific directory
-#   scripts/watch-markdown.sh ~/notes --share       # hosted watch (requires signup)
+#   scripts/watch-markdown.sh ~/notes --share       # Gander Agent Connect (requires signup)
 #   scripts/watch-markdown.sh ~/notes --existing    # also onboard unmatched .md
 #   scripts/watch-markdown.sh ~/notes --no-recursive
 #   scripts/watch-markdown.sh ~/notes --glob 'daily-*.md'
