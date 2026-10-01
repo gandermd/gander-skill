@@ -1,10 +1,10 @@
 # gander-skill
 
-The Gander skill saves agent-produced plans as markdown, offers to watch
-them on [gander.md](https://gander.md), and keeps the agent listening for
-`@agent` review comments. Use it when the agent finishes a plan and a
-human who is not in the IDE needs to review while the file is still
-changing.
+The Gander skill saves agent-produced plans as markdown, starts Gander
+Agent Connect (`gander watch`) on [gander.md](https://gander.md), and keeps
+the agent listening for `@agent` review comments. Use it when the agent
+finishes a plan and a human who is not in the IDE needs to review while
+the file is still changing.
 
 Works with OpenCode, Claude Code, Codex CLI, Cursor, Grok Build, and any
 other runner that loads `SKILL.md` from `.agents/skills/` or `.claude/skills/`.
@@ -15,7 +15,7 @@ Needs the [gander CLI](https://github.com/gandermd/gander-cli) on `PATH`.
 - **Save the agent’s plan** as `./plans/YYYY-MM-DD-<slug>.md` with `status: draft`, then offer to **watch** it (live updates, not a static share).
 - **Share vs watch by doc type**: reports are static snapshots (`gander share`); plans, RFCs, and drafts stay live-watched (`gander watch`). Type labels (`plan`, `rfc`, `draft`, `design`, `spec`, `report`) are additive — the CLI merges them; do not replace existing tags.
 - **Watch a directory** with `gander watch <dir>` so new `.md` files auto-onboard (ask once; never silent auto-watch). The runner classifies each file (reports onboard as static shares labeled `report`; plans stay live-watched).
-- **After a hosted watch**, poll for `@agent` comments (MCP preferred; `gander comments` fallback).
+- **After Gander Agent Connect** (`gander watch`), poll for `@agent` comments (MCP preferred; `gander comments` fallback).
 - Also **render, share, and manage** markdown with the `gander` CLI (render locally, share on gander.md, list/remove shares, mint team invites, open the dashboard, sign up, rotate tokens, upgrade).
 
 ## Install
@@ -55,18 +55,18 @@ gander-skill/
 
 ### `scripts/watch-markdown.sh`
 
-Thin wrapper around `gander watch <dir>` (hosted, if signed up) or
+Thin wrapper around `gander watch <dir>` (Gander Agent Connect, if signed up) or
 `gander --watch <dir>` (local previews). Prefer the CLI; this script is
 not a second fswatch daemon. Directory-adopted files never open a browser.
 
 ```bash
-gander watch ~/projects/notes                   # hosted directory watch
+gander watch ~/projects/notes                   # Gander Agent Connect for a directory
 gander --watch ~/notes                          # local previews if not signed up
 gander status                                   # already watching?
 gander stop ~/projects/notes                    # stop adoption only
 
 scripts/watch-markdown.sh ~/projects/notes      # same as gander watch / --watch
-scripts/watch-markdown.sh ~/notes --share       # force hosted watch
+scripts/watch-markdown.sh ~/notes --share       # force Gander Agent Connect
 scripts/watch-markdown.sh --stop ~/notes        # gander stop (adoption only)
 ```
 

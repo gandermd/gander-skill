@@ -133,9 +133,9 @@ gander list
 
 Table of all active shares on your account.
 
-### Comments (review round-trip)
+### Comments (Gander Agent Connect)
 
-Comments live on gander.md, not in the markdown file. The agent reads them via MCP (`gander mcp`), installed once with `gander mcp install`.
+Gander Agent Connect is the live `gander.md` link plus `@agent` comments back into this session. Comments live on gander.md, not in the markdown file. The agent reads them via MCP (`gander mcp`), installed once with `gander mcp install`. Agents still run `gander watch` / `gander watch --silent`.
 
 ```bash
 gander comments              # inbox across all shares on this machine
@@ -260,7 +260,7 @@ Ask, then stop:
 
 > I created `<dir>` and will be adding markdown there. Want Gander to auto-share new `.md` files under it (including subfolders) as they appear?
 
-- **Yes** → `gander watch <abs-dir>` (hosted if signed up; otherwise `gander --watch <abs-dir>`). The runner persists, so later sessions do not ask again. Directory-adopted files never open a browser. Then start the usual comment-poll window (see Comments), because this is a gander.
+- **Yes** → `gander watch <abs-dir>` (Gander Agent Connect if signed up; otherwise `gander --watch <abs-dir>`). The runner persists, so later sessions do not ask again. Directory-adopted files never open a browser. Then start the usual comment-poll window (see Comments), because this is a gander.
 - **No** → remember declined for this session. Still gander individual files if they explicitly ask. Do not prompt per new file.
 - **Already watching** → do not ask. New files in that tree just onboard.
 
