@@ -25,6 +25,7 @@ readme_contains() {
 
 contains "gander share --silent"
 contains "gander watch --silent"
+contains 'GANDER_SOURCE="${GANDER_SOURCE:-skill}"'
 contains "share this"
 contains "watch this"
 contains "gander: watch"
@@ -61,6 +62,19 @@ fi
 
 if grep -q -F 's) gander share' "$ROOT/.agents/skills/gander/scripts/save-plan.sh"; then
   echo "save-plan.sh s must not static-share" >&2
+  fail=1
+fi
+
+if ! grep -q -F 'GANDER_SOURCE="${GANDER_SOURCE:-skill}"' "$ROOT/.agents/skills/gander/scripts/save-plan.sh"; then
+  echo "save-plan.sh s must tag install source" >&2
+  fail=1
+fi
+if ! grep -q -F 'GANDER_SOURCE="${GANDER_SOURCE:-skill}"' "$ROOT/.agents/skills/gander/scripts/watch-markdown.sh"; then
+  echo "watch-markdown.sh must tag hosted install source" >&2
+  fail=1
+fi
+if grep -E -q 'GANDER_SOURCE.*gander README|GANDER_SOURCE.*gander --watch README' "$SKILL"; then
+  echo "local preview must not set GANDER_SOURCE" >&2
   fail=1
 fi
 

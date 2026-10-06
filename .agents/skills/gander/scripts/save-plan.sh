@@ -102,6 +102,6 @@ if [ -n "$SRC" ] || [ -t 0 ]; then
 fi
 case "$ans" in
   y|Y) gander "$DEST" ;;
-  s|S) gander watch --silent "$DEST" ;;
+  s|S) GANDER_SOURCE="${GANDER_SOURCE:-skill}" gander watch --silent "$DEST" ;;
   *)   echo "  skipped" ;;
 esac

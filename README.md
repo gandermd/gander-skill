@@ -14,6 +14,7 @@ Needs the [gander CLI](https://github.com/gandermd/gander-cli) on `PATH`.
 
 - **Save the agent’s plan** as `./plans/YYYY-MM-DD-<slug>.md` with `status: draft`, then offer to **watch** it (live updates, not a static share).
 - **Share vs watch by doc type**: reports are static snapshots (`gander share`); plans, RFCs, and drafts stay live-watched (`gander watch`). Type labels (`plan`, `rfc`, `draft`, `design`, `spec`, `report`) are additive — the CLI merges them; do not replace existing tags.
+- **Install source**: hosted signup, share, and watch from this skill set `GANDER_SOURCE=skill` when it is unset, so the account's first touch records this install. Local preview does not. The server keeps the first value.
 - **Watch a directory** with `gander watch <dir>` so new `.md` files auto-onboard (ask once; never silent auto-watch). The runner classifies each file (reports onboard as static shares labeled `report`; plans stay live-watched).
 - **After a hosted watch**, poll for `@agent` comments (MCP preferred; `gander comments` fallback).
 - Also **render, share, and manage** markdown with the `gander` CLI (render locally, share on gander.md, list/remove shares, mint team invites, open the dashboard, sign up, rotate tokens, upgrade).

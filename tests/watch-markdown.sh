@@ -16,6 +16,7 @@ cat > "$fake_bin/gander" <<'EOF'
 #!/bin/sh
 {
   printf 'argc=%s\n' "$#"
+  printf 'source=%s\n' "${GANDER_SOURCE:-}"
   i=1
   for a in "$@"; do
     printf 'arg%s=%s\n' "$i" "$a"
@@ -43,6 +44,7 @@ export PATH="$fake_bin:$PATH"
 export HOME="$tmp/home"
 export GANDER_LOG="$tmp/gander.log"
 unset GANDER_CONFIG
+unset GANDER_SOURCE
 
 run() {
   rm -f "$GANDER_LOG"
@@ -75,11 +77,16 @@ refute() {
 notes="$tmp/notes"
 abs_notes="$(cd "$notes" && pwd)"
 
-# No token → local directory watch.
+# No token → local directory watch. Local preview does not tag a source.
 run "$notes"
 expect "arg1=--watch"
 expect "arg2=$abs_notes"
 refute "arg1=watch"
+if ! grep -q -x 'source=' "$GANDER_LOG"; then
+  echo "local watch must not set GANDER_SOURCE" >&2
+  cat "$GANDER_LOG" >&2
+  fail=1
+fi
 
 # Signed up → hosted gander watch.
 mkdir -p "$HOME/.gander"
@@ -87,6 +94,7 @@ printf '%s\n' '{"api_token": "gmd_test"}' > "$HOME/.gander/config.json"
 run "$notes"
 expect "arg1=watch"
 expect "arg2=$abs_notes"
+expect "source=skill"
 refute "arg1=--watch"
 
 # --share forces hosted even without a token.
@@ -94,6 +102,7 @@ rm -f "$HOME/.gander/config.json"
 run --share "$notes"
 expect "arg1=watch"
 expect "arg2=$abs_notes"
+expect "source=skill"
 
 # Directory flags pass through before the path.
 mkdir -p "$HOME/.gander"
