@@ -17,6 +17,7 @@ cat > "$fake_bin/gander" <<'EOF'
 #!/bin/sh
 {
   printf 'argc=%s\n' "$#"
+  printf 'source=%s\n' "${GANDER_SOURCE:-}"
   i=1
   for a in "$@"; do
     printf 'arg%s=%s\n' "$i" "$a"
@@ -30,6 +31,7 @@ export PATH="$fake_bin:$PATH"
 export PLAN_DIR="$tmp/plans"
 unset PLAN_SOURCE
 unset GANDER_LOG
+unset GANDER_SOURCE
 
 # Piped stdin: saves, skips prompt, does not invoke gander, does not fail.
 if ! printf '%s\n' 'Do the thing.' | "$SCRIPT" "Add token rotation" >"$tmp/out" 2>"$tmp/err"; then
@@ -119,6 +121,11 @@ else
     cat "$GANDER_LOG" >&2
     fail=1
   fi
+  if ! grep -q 'source=skill' "$GANDER_LOG"; then
+    echo "s should tag install source skill" >&2
+    cat "$GANDER_LOG" >&2
+    fail=1
+  fi
 fi
 
 # y → local gander (no watch/share subcommand)
@@ -134,6 +141,11 @@ if [ ! -f "$GANDER_LOG" ]; then
 else
   if grep -q 'arg1=watch' "$GANDER_LOG" || grep -q 'arg1=share' "$GANDER_LOG"; then
     echo "y must be local preview, not share/watch" >&2
+    cat "$GANDER_LOG" >&2
+    fail=1
+  fi
+  if ! grep -q 'source=$' "$GANDER_LOG"; then
+    echo "y must not tag an install source" >&2
     cat "$GANDER_LOG" >&2
     fail=1
   fi

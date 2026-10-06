@@ -102,6 +102,7 @@ fi
 echo "note: prefer \`gander watch <dir>\` (or \`gander --watch <dir>\` if not signed up). This script wraps the CLI." >&2
 
 if [ "$SHARE" = 1 ] || signed_up; then
+  export GANDER_SOURCE="${GANDER_SOURCE:-skill}"
   if [ ${#EXTRA[@]} -gt 0 ]; then
     exec gander watch "${EXTRA[@]}" "$DIR"
   fi
